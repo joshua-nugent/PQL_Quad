@@ -5,19 +5,19 @@
 
 
 data sim;
-	sigbsq = 1; beta0 = -2; beta1 = 0.5; n = 40; p = 100; dsn = 10;
-	do ds = 1 to dsn;
-		do cluster = 1 to n;
-			x1 = (cluster lt (n+1)/2);
-			randint = normal(0) * sqrt(sigbsq);
-			do obs = 1 to p by n;
-				linpred = beta0 + beta1*x1 + randint;
-				expit = exp(linpred)/(1 + exp(linpred));
-				y = (uniform(0) lt expit);
-				output;
-			end;
-		end;
-	end;
+    sigbsq = 1; beta0 = -2; beta1 = 0.5; n = 40; p = 100; dsn = 10;
+    do dsn = 1 to dsn;
+        do cluster = 1 to n;
+            x1 = (cluster lt (n+1)/2);
+            randint = normal(0) * sqrt(sigbsq);
+            do obs = 1 to p;
+                linpred = beta0 + beta1*x1 + randint;
+                expit = exp(linpred)/(1 + exp(linpred));
+                y = (uniform(0) lt expit);
+                output;
+            end;
+        end;
+    end;
 run;
 
 title "pql";
