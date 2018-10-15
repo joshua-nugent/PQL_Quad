@@ -77,23 +77,23 @@ ods select all;
 %pql;
 %laplace;
 %quad(qpoints=4);
-%quad(qpoints=25);
+/*%quad(qpoints=25);*/
+title "sigbsq = &sigbsq, beta0 = &beta0, beta1 = &beta1, n = &n, p = &p, dsn = &dsn";
 data results; 
 set pqlestimates (in = pql)
     laplaceestimates (in = laplace)
-    quadestimates4 (in = quad4)
-    quadestimates25 (in = quad25);
+    quadestimates4 (in = quad4);
+/*    quadestimates25 (in = quad25);*/
 if laplace then source = "laplace";
 if pql then source = "pql";
 if quad4 then source = "quad4";
 if quad25 then source = "quad25";
 %mend;
 
-%runsim (dsn = 10);
+%runsim (dsn = 100, p = 80, n = 30);
 
-proc print data = results (obs = 10); run;
+/*proc print data = results (obs = 10); run;*/
 
-title "compare results";
 proc means data = results (where = (effect = "x1"));
 class  source;
 var estimate;
