@@ -1,3 +1,3 @@
 # PQL_Quad
 
-Will fill this in more later.
+Repo for Fall 2018 work on problems with PQL estimation.
