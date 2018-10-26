@@ -1,6 +1,16 @@
 library(lme4)
 library(MASS)
 library(tidyverse)
+library(parallel)
+RNGkind("L'Ecuyer-CMRG")
+set.seed(42)
+
+#sas_check <- check_estimates(n, p, b_0, b_1, sigbsq)
+#sas_csv <- read.csv("data_for_sas_2.csv")
+#y <- sas_csv$y
+#x1 <- sas_csv$x1
+#id <- sas_csv$id
+#glmmresPQL <- glmmPQL(y ~ x1, random = ~ 1 | id , family = binomial(link = "logit"), niter=5)
 
 check_estimates <- function(n, p, b_0, b_1, sigbsq){
   betas <- c(b_0, b_1)
@@ -15,8 +25,12 @@ check_estimates <- function(n, p, b_0, b_1, sigbsq){
   # Invert t
   expit <- exp(linpred) / (1 + exp(linpred))
   y <- runif(p*n) < expit
+
+  # for the SAS check we did
+#  data <- cbind(id, x1, randint, linpred, expit, y)
+#  write.csv(data, paste0("data_for_sas_", i,".csv"), row.names=F)
   
-  glmmresPQL <- glmmPQL(y ~ x1, random = ~ 1 | id , family = binomial(link = "logit"))
+  glmmresPQL <- glmmPQL(y ~ x1, random = ~ 1 | id , family = binomial(link = "logit"), niter = 100)
   glmmresLP <- glmer(y ~ x1 + (1|id), nAGQ = 1, family = binomial(link = "logit"))
   glmmres4 <- glmer(y ~ x1 + (1|id), nAGQ = 4, family = binomial(link = "logit"))
   glmmres10 <- glmer(y ~ x1 + (1|id), nAGQ = 10, family = binomial(link = "logit"))
@@ -27,28 +41,42 @@ check_estimates <- function(n, p, b_0, b_1, sigbsq){
   beta4 <- fixef(glmmres4)
   beta10 <- fixef(glmmres10)
   beta25 <- fixef(glmmres25)
- 
+  
+  # get covariance matrix...
+  vcovPQL <- vcov(glmmresPQL, useScale = FALSE)
+  vcovLP <- vcov(glmmresLP, useScale = FALSE)
+  vcov4 <- vcov(glmmres4, useScale = FALSE)
+  vcov10 <- vcov(glmmres10, useScale = FALSE)
+  vcov25 <- vcov(glmmres25, useScale = FALSE)
+  
+  # ...and use diagonal entries to get SE
+  sePQL <- sqrt(diag(vcovPQL))
+#  print('sePQL is...')
+ # print(sePQL)
+  seLP <- sqrt(diag(vcovLP))
+  se4 <- sqrt(diag(vcov4))
+  se10 <- sqrt(diag(vcov10))
+  se25 <- sqrt(diag(vcov25))
+  
   value_labels <- c("n", "p", "b_0", "b_1", "sigbsq", 
               "PQL_b_0", "Laplace_b_0", "nAGQ_4_b_0", "nAGQ_10_b_0", "nAGQ_25_b_0",
               "b_0_PQL_bias", "b_0_Laplace_bias", "b_0_4_bias", "b_0_10_bias", "b_0_25_bias",
               "PQL_b_1", "Laplace_b_1", "nAGQ_4_b_1", "nAGQ_10_b_1", "nAGQ_25_b_1",
-              "b_1_PQL_bias", "b_1_Laplace_bias", "b_1_4_bias", "b_1_10_bias", "b_1_25_bias"
+              "b_1_PQL_bias", "b_1_Laplace_bias", "b_1_4_bias", "b_1_10_bias", "b_1_25_bias",
+              "b_1_PQL_SE", "b_1_Laplace_SE", "b_1_4_SE", "b_1_10_SE", "b_1_25_SE"
               )
   estimates <-c(n, p, b_0, b_1, sigbsq,
                 betaPQL[1], betaLP[1], beta4[1], beta10[1], beta25[1],
                 betaPQL[1] - b_0, betaLP[1] - b_0, beta4[1] - b_0, beta10[1] - b_0, beta25[1] - b_0,
                 betaPQL[2], betaLP[2], beta4[2], beta10[2], beta25[2],
-                betaPQL[2] - b_1, betaLP[2] - b_1, beta4[2] - b_1, beta10[2] - b_1, beta25[2] - b_1
+                betaPQL[2] - b_1, betaLP[2] - b_1, beta4[2] - b_1, beta10[2] - b_1, beta25[2] - b_1,
+                sePQL[2], seLP[2], se4[2], se10[2], se25[2]
                 )
 
   names(estimates) <- value_labels
 
   return(estimates)
 }
-####  Might use this later for later SE / coverage analysis 
-#  VcovPQL <- vcov(glmmresPQL, useScale = FALSE) - get covariance matrix...
-# ...and use diagonal entries to get SE
-#  sePQL <- sqrt(diag(VcovPQL))
 
 
 ###############################################################
@@ -68,11 +96,11 @@ sigbsq <- 1
 
 
 # number of runs for each simulations
-reps <- 200
+reps <- 10
 # KEY STEP - Output of the models
-for (i in c(-2, -1.5, -1, -.5, 0, .5, 1, 1.5, 2)){
+for (i in c(-2)){#, -1.5, -1, -.5, 0, .5, 1, 1.5, 2)){
   data <- as_tibble(t(replicate(reps, check_estimates(n, p, b_0, i, sigbsq))))
-  write.csv(data, paste0("data_for_b_1_", i,".csv"), row.names=F)
+  #write.csv(data, paste0("data_for_b_1_", i,".csv"), row.names=F)
 }
 for (i in c(-1.5, -1, -.5, 0, 1, 1.5, 2)){
   data <- as_tibble(t(replicate(reps, check_estimates(n, p, i, b_1, sigbsq))))
@@ -122,6 +150,14 @@ b_1_bias_plot <- ggplot(data = b_1_bias_results) +
   geom_point(mapping = aes(x = b_1, y = b_1_PQL_bias), color = "red") +
   geom_point(mapping = aes(x = b_1, y = b_1_25_bias), color = "green")
 b_1_bias_plot
+
+
+
+
+
+
+
+
 
 
 ##########################
