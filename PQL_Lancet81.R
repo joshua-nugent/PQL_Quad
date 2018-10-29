@@ -5,6 +5,8 @@ library(parallel)
 RNGkind("L'Ecuyer-CMRG")
 set.seed(42)
 
+replication_index <- 0
+
 #sas_check <- check_estimates(n, p, b_0, b_1, sigbsq)
 #sas_csv <- read.csv("data_for_sas_2.csv")
 #y <- sas_csv$y
@@ -13,6 +15,9 @@ set.seed(42)
 #glmmresPQL <- glmmPQL(y ~ x1, random = ~ 1 | id , family = binomial(link = "logit"), niter=5)
 
 check_estimates <- function(n, p, b_0, b_1, sigbsq){
+  replication_index <- replication_index + 1
+  print('replication number:')
+  print(replication_index)
   betas <- c(b_0, b_1)
   # vector of p copies of each ID for 'long' data
   id <- rep(1:n, each = p)
@@ -46,15 +51,19 @@ check_estimates <- function(n, p, b_0, b_1, sigbsq){
 
   value_labels <- c("n", "p", "b_0", "b_1", "sigbsq", 
               "PQL_b_0", "nAGQ_10_b_0",
-              "b_0_PQL_bias", "b_0_10_bias",
+              "b_0_PQL_bias_diff", "b_0_10_bias_diff", 
+              "b_0_PQL_bias_ratio", "b_0_10_bias_ratio",
               "PQL_b_1", "nAGQ_10_b_1",
-              "b_1_PQL_bias", "b_1_10_bias", 
+              "b_1_PQL_bias_diff", "b_1_10_bias_diff", 
+              "b_1_PQL_bias_ratio", "b_1_10_bias_ratio", 
               "b_1_PQL_SE", "b_1_10_SE"
               )
   estimates <-c(n, p, b_0, b_1, sigbsq,
                 betaPQL[1], beta10[1],
+                betaPQL[1] - b_0, beta10[1] - b_0,
                 betaPQL[1] / b_0, beta10[1] / b_0,
                 betaPQL[2], beta10[2],
+                betaPQL[2] - b_1, beta10[2] - b_1,
                 betaPQL[2] / b_1, beta10[2] / b_1,
                 sePQL[2], se10[2]
                 )
@@ -80,9 +89,26 @@ b_0 <- -4.2 # intercept/baseline of control group: 1.51% = .0151 = OR of .015 = 
 b_1 <- -0.8 # effect of treatment: OR of .45 = -.8
 sigbsq <- 1
 
-reps <- 100
+reps <- 1000
 
+replication_index <- 0
 data_attempts <- as_tibble(t(replicate(reps, check_estimates(n, p, b_0, b_1, sigbsq))))
+
+mean(data_attempts$PQL_b_1)
+mean(data_attempts$b_1_PQL_bias_ratio)
+mean(data_attempts$b_1_PQL_bias_diff)
+
+# Crazy estiamtes? Remove max or min values.
+# clean_data <- data_attempts[-which.min(data_attempts$PQL_b_1), ]  ...rt:
+# clean_data <- data_attempts[-which.max(data_attempts$PQL_b_1), ]
+# repeat below until crazy values gone
+# clean_data <- clean_data[-which.min(clean_data$PQL_b_1), ]
+# clean_data <- clean_data[-which.max(clean_data$PQL_b_1), ]
+
+mean(clean_data$PQL_b_1)
+mean(clean_data$b_1_PQL_bias_ratio)
+mean(clean_data$b_1_PQL_bias_diff)
+
 
 # Parameters for Lancet - vol 385, April 18, 2015 "Lancet 81"
 # Incident severe suicidal ideation: YAM vs. controls at 12 months
@@ -96,8 +122,10 @@ sigbsq <- 1
 reps <- 100
 
 data_ideation <- as_tibble(t(replicate(reps, check_estimates(n, p, b_0, b_1, sigbsq))))
+mean(data_ideation$PQL_b_1)
+mean(data_ideation$b_1_PQL_bias_ratio)
+mean(data_ideation$b_1_PQL_bias_diff)
 
-mean(data_attempts$b_1_PQL_bias)
 
 
 # # Example loops to scan over values:
@@ -118,12 +146,12 @@ mean(data_attempts$b_1_PQL_bias)
 # Organizational structure as model list might grow
 # to hopefully avoid repeated code
 diff_col_names_b_0 <- c(
-  "b_0_PQL_bias",
-  "b_0_10_bias"
+  "b_0_PQL_bias_diff",
+  "b_0_10_bias_ratio"
 )
 diff_col_names_b_1 <- c(
-  "b_1_PQL_bias",
-  "b_1_10_bias"
+  "b_1_PQL_bias_diff",
+  "b_1_10_bias_ratio"
 )
 
 # read in data, make a table with bias
