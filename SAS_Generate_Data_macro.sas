@@ -6,8 +6,11 @@
 %macro gendata(sigbsq = 1, beta0 = -2, beta1 = 0.5, n = 40, p = 100, dsn = 5);
 
 data sim;
-    sigbsq = &sigbsq; beta0 = &beta0; beta1 = &beta1; n = &n; p = &p; dsn = &dsn;
-    do dsn = 1 to dsn;
+    sigbsq = &sigbsq; n = &n; p = &p; dsn = &dsn;
+/*    beta0 = &beta0; beta1 = &beta1; */
+  do beta0 = &beta0;
+  do beta1 = &beta1;
+    do dsn = 1 to &dsn;
         do cluster = 1 to n;
             x1 = (cluster lt (n+1)/2);
             randint = normal(0) * sqrt(sigbsq);
@@ -19,10 +22,15 @@ data sim;
             end;
         end;
     end;
+  end;
+  end;
 run;
 %mend gendata;
 
-%gendata(dsn = 20, n=4, p = 10);
+/* for checking */
+/* %gendata(dsn = 2, n=4, p = 2, beta0= %str(-2,-1), beta1 = %str(0.5,2)); */
+
+
 
 /* Josh-- check the log-- note that some may fail to converge and we may need 
     to do something about this */
@@ -31,7 +39,7 @@ ods select none;
 ods output parameterestimates = pqlestimates;
 title "pql";
 proc glimmix data = sim;
-by dsn;
+by beta0 beta1 dsn;
 class obs;
 nloptions maxiter = 100;
 model y = x1 / solution dist=bin;
@@ -49,7 +57,7 @@ ods select none;
 ods output parameterestimates = laplaceestimates;
 title "laplace";
 proc glimmix data = sim method = laplace;
-by dsn;
+by beta0 beta1 dsn;
 class obs;
 model y = x1 /solution dist=bin;
 random int / subject = cluster;
@@ -58,12 +66,12 @@ ods select all;
 %mend laplace;
 
 
-%macro quad(qpoints = 25);
+%macro quad(qpoints = &qpoints);
 ods select none;
 ods output parameterestimates = quadestimates&qpoints;
-title "quad 25";
+title "quad &qpoints";
 proc glimmix data = sim method = quad(qpoints= &qpoints);
-by dsn;
+by beta0 beta1 dsn;
 class obs;
 model y = x1 /solution dist=bin;
 random int / subject = cluster;
@@ -71,7 +79,7 @@ run;
 ods select all;
 %mend quad;
 
-%macro runsim(sigbsq = 1, beta0 = -2, beta1 = 0.5, n = 40, p = 100, dsn = 5);
+%macro runsim(sigbsq = 1, beta0 = %str(-2,-1), beta1 = %str(0.5,0.75), n = 40, p = 100, dsn = 5);
 %gendata(sigbsq = &sigbsq, beta0 = &beta0, beta1 = &beta1, 
                                           n = &n, p = &p, dsn = &dsn);
 %pql;
@@ -90,7 +98,8 @@ if quad4 then source = "quad4";
 if quad25 then source = "quad25";
 %mend;
 
-%runsim (dsn = 100, p = 75, n = 40, beta0=0, beta1 = 2.9);
+%runsim (dsn = 10, p = 75, n = 40, beta0=%str(-2,-1), beta1=%str(1.25,1.5));
+
 
 /*proc print data = results (obs = 10); run;*/
 
@@ -101,7 +110,7 @@ oddsratio = exp(estimate);
 run;
 
 proc means data = results2 (where = (effect = "x1"));
-class  source;
+class  source beta0 beta1;
 var estimate oddsratio;
 run;
 
