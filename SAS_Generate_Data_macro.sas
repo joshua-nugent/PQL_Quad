@@ -90,13 +90,19 @@ if quad4 then source = "quad4";
 if quad25 then source = "quad25";
 %mend;
 
-%runsim (dsn = 100, p = 80, n = 30);
+%runsim (dsn = 100, p = 75, n = 40, beta0=0, beta1 = 2.9);
 
 /*proc print data = results (obs = 10); run;*/
 
-proc means data = results (where = (effect = "x1"));
+/* added below to do the odds ratio */
+data results2;
+set results;
+oddsratio = exp(estimate);
+run;
+
+proc means data = results2 (where = (effect = "x1"));
 class  source;
-var estimate;
+var estimate oddsratio;
 run;
 
 
