@@ -33,10 +33,18 @@ run;
 ods select none;
 ods output parameterestimates = pqlestimates;
 title "pql";
-proc glimmix data = sim;
+proc glimmix
+	data = sim
+	pconv = .0001 /* Convergence is mabe too loose with this value? */
+	/*pconv = .00001 /* Convergence is good with this value! */
+/*	pconv = .000001 /*Convergence is poor with this value */
+	;
+		nloptions
+			maxiter = 200
+			technique = DBLDOG;
 by beta0 beta1 dsn;
 class obs;
-nloptions maxiter = 100;
+/*nloptions maxiter = 200;*/
 model y = x1 / solution dist=bin;
 random int / subject = cluster;
 run;
@@ -98,16 +106,27 @@ if quad25 then source = "quad25";*/
 
 
 /* Key step ... Run the whole shebang */
-%runsim(
-	dsn = 10, p = 400, n = 200, /* p used to be about 75, n about 40 trying larger number to get better convergence */
-	beta0 = %str(-11.51291546,-9.210240367),
-	/*-6.906754779,-5.293304825,-4.59511985,-3.891820298,-3.47609869,-2.944438979,-2.197224577,-1.386294361,-0.8472978604,-0.4054651081),*/
-	beta1 = %str(-0.6931471806,-0.2876820725,-0.1053605157,0.0953101798,0.2851789422,0.4054651081,0.6931471806,1.386294361)
+%runsim(							/* n is number of clusters, p is people per cluster */
+	dsn = 2000, p = 25, n = 10, 		/* p used to be about 75, n about 40. trying larger number to get better convergence */
+	beta0 = %str(-3.47609869,-2.944438979,-2.197224577,-1.386294361,-0.8472978604,-0.4054651081),
+/*  beta0 = %str(-6.906754779,-4.59511985,-3.891820298,-3.47609869,-2.944438979,-2.197224577,-1.386294361,-0.8472978604,-0.4054651081),*/
+	beta1 = %str(-0.6931471806,-0.2876820725,-0.1053605157)/*
+/*	beta1 = %str(-0.6931471806,-0.2876820725,-0.1053605157,0.0953101798,0.2851789422,0.4054651081,0.6931471806,1.386294361)*/
 );
 
 /*proc print data = results (obs = 10); run;*/
 
 /* added below to do the odds ratio */
+proc means data = results (where = (effect = "x1"));
+class beta0 beta1;
+var stderr;
+run;
+
+proc means data = results (where = (effect = "x1"));
+class beta0 beta1;
+var estimate;
+run;
+
 data results2;
 set results;
 oddsratio = exp(estimate);
@@ -118,14 +137,12 @@ class beta0 beta1;
 var oddsratio;
 run;
 
-proc means data = results2 (where = (effect = "x1"));
-class beta0 beta1;
-var estimate;
-run;
-
-
-
+/* Want the histograms? */
 /*proc univariate data = results;
 var stderr;
 histogram stderr;
+run;*/
+/*proc univariate data = results (where = (effect = "x1"));
+var estimate;
+histogram estimate;
 run;*/
