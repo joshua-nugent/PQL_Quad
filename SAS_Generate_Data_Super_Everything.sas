@@ -29,7 +29,7 @@ run;
 
 %macro pql;
 ods select none;
-ods output parameterestimates = pqlestimates;
+ods output parameterestimates = pqlestimates covparms = cpbin;
 title "pql";
 proc glimmix
 	data = sim
@@ -116,19 +116,19 @@ ods select all;
 
 /* Key step ... Run the whole thing */
 %runsim(							
-	dsn = 4, p = 25, n = 10, 	/* n is number of clusters, p is people per cluster */
-	beta0 = %str(-2),
+	dsn = 10, p = 25, n = 10, 	/* n is number of clusters, p is people per cluster */
+	beta0 = %str(-2, -1),
 /*  beta0 = %str(-6.906754779,-4.59511985,-3.891820298,-3.47609869,-2.944438979,-2.197224577,-1.386294361,-0.8472978604,-0.4054651081),*/
-	beta1 = %str(1.5)
+	beta1 = %str(.5,1.2)
 /*	beta1 = %str(-0.6931471806,-0.2876820725,-0.1053605157,0.0953101798,0.2851789422,0.4054651081,0.6931471806,1.386294361)*/
 );
-
 
 
 proc means data = results (where = (effect = "x1"));
 class beta0 beta1 source;
 var estimate;
 run;
+
 
 data results2;
 set results;
@@ -147,7 +147,7 @@ run;
 
 proc sort data = cp; by dsn beta0 beta1; run;
 
-proc print data = cp; run;
+/*proc print data = cp; run;*/
 
 data icc;
 set cp;
@@ -155,13 +155,27 @@ by dsn beta0 beta1;
 retain sb2;
 if first.beta1 then sb2 = estimate;
 icc = sb2 / (sb2 + estimate);
-icc_pi_sq = sb2 / (sb2 + 3.29);
 if last.beta1 then output;
 run;
 
-proc print data = icc; run;
+proc means data = icc;
+class beta0 beta1;
+var icc;
+run;
 
+/*proc print data = icc; run;*/
 
+data icc_bin_pi_sq;
+set cpbin (where = (covparm = "Intercept"));
+icc_pi_sq = (estimate) / (estimate + 3.29);
+run;
+
+/*proc print data = results_icc;*/
+
+proc means data = icc_bin_pi_sq;
+class beta0 beta1;
+var icc_pi_sq;
+run;
 
 /* Want the histograms? */
 /*proc univariate data = results;
