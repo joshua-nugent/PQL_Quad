@@ -148,7 +148,7 @@ Odds_Ratio = exp(estimate);
 run;
 
 proc means data = results2 (where = (effect = "x1"));
-class source beta1 beta0;* source;
+class source beta1 beta0;
 var Odds_Ratio;
 run;
 
@@ -178,7 +178,7 @@ run;
 /*proc print data = cp_quad4; run;*/
 proc sort data = cp_quad4; by dsn beta0 beta1; run;
 
-/*data icc_quad4;
+data icc_quad4;
 set cp_quad4;
 by dsn beta0 beta1;
 retain sb2;
@@ -189,7 +189,7 @@ run;
 proc means data = icc_quad4;
 class beta1 beta0;
 var icc_quad4;
-run;*/
+run;
 
 /*proc print data = icc; run;*/
 
@@ -197,20 +197,20 @@ data icc_bin_pi_sq;
 set cpbin (where = (covparm = "Intercept"));
 icc_pi_sq = (estimate) / (estimate + 3.29);
 run;
-/*data icc_bin_pi_sq_quad4;
+data icc_bin_pi_sq_quad4;
 set cpbin_quad4 (where = (covparm = "Intercept"));
 icc_pi_sq_quad4 = (estimate) / (estimate + 3.29);
-run;*/
+run;
 
 proc means data = icc_bin_pi_sq;
 class beta1 beta0;
 var icc_pi_sq;
 run;
 
-/*proc means data = icc_bin_pi_sq_quad4;
+proc means data = icc_bin_pi_sq_quad4;
 class beta1 beta0;
 var icc_pi_sq_quad4;
-run;*/
+run;
 
 /* Want the histograms? */
 /*proc univariate data = results;
