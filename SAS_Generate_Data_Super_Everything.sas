@@ -65,7 +65,7 @@ ods select all;
 
 %macro quad(qpoints = 4);
 ods select none;
-ods output parameterestimates = quadestimates&qpoints;
+ods output parameterestimates = quadestimates&qpoints covparms = cpbin_quad&qpoints;
 title "quad &qpoints";
 proc glimmix data = sim method = quad(qpoints= &qpoints);
 by beta0 beta1 dsn;
@@ -76,17 +76,15 @@ run;
 ods select all;
 %mend quad;
 
-%macro runsim(sigbsq = 1,
-beta0 = %str(-2,-1),
-beta1 = %str(1.25,1.5),
-n = 40, p = 100, dsn = 5);
+%macro runsim(sigbsq = 1, beta0 = %str(-2,-1), beta1 = %str(1.25,1.5), n = 40, p = 100, dsn = 5);
 ods select none;
+
 %gendata(sigbsq = &sigbsq, beta0 = &beta0, beta1 = &beta1, 
                                           n = &n, p = &p, dsn = &dsn);
-%pql;
-/*%laplace;*/
+%pql;   /*%laplace;*/
 %quad(qpoints=4);
 %icc;
+%iccq;
 
 title "sigbsq = &sigbsq, beta0 = &beta0, beta1 = &beta1, n = &n, p = &p, dsn = &dsn";
 data results; 
@@ -113,19 +111,33 @@ run;
 ods select all;
 %mend icc;
 
+%macro iccq;
+ods select none;
+ods output covparms = cp_quad4;
+title "ICC Quad4";
+proc glimmix
+    data = sim method = quad(qpoints=4);
+    by beta0 beta1 dsn;
+    class obs;
+    model y = x1 / solution dist=normal;
+    random int / subject = cluster;
+run;
+ods select all;
+%mend iccq;
+
 
 /* Key step ... Run the whole thing */
 %runsim(							
-	dsn = 10, p = 25, n = 10, 	/* n is number of clusters, p is people per cluster */
-	beta0 = %str(-2, -1),
-/*  beta0 = %str(-6.906754779,-4.59511985,-3.891820298,-3.47609869,-2.944438979,-2.197224577,-1.386294361,-0.8472978604,-0.4054651081),*/
-	beta1 = %str(.5,1.2)
+	dsn = 8, p = 100, n = 100, 	/* n is number of clusters, p is people per cluster */
+	beta0 = %str(-0.4054651081),
+/*  beta0 = %str(-4.59511985,-3.891820298,-3.47609869,-2.944438979,-2.197224577,-1.386294361,-0.8472978604,-0.4054651081),*/
+	beta1 = %str(-0.6931471806)
 /*	beta1 = %str(-0.6931471806,-0.2876820725,-0.1053605157,0.0953101798,0.2851789422,0.4054651081,0.6931471806,1.386294361)*/
 );
 
 
 proc means data = results (where = (effect = "x1"));
-class beta0 beta1 source;
+class source beta1 beta0;
 var estimate;
 run;
 
@@ -136,12 +148,12 @@ Odds_Ratio = exp(estimate);
 run;
 
 proc means data = results2 (where = (effect = "x1"));
-class beta0 beta1 source;
+class source beta1 beta0;* source;
 var Odds_Ratio;
 run;
 
 proc means data = results (where = (effect = "x1"));
-class beta0 beta1 source;
+class source beta1 beta0;
 var stderr;
 run;
 
@@ -159,9 +171,25 @@ if last.beta1 then output;
 run;
 
 proc means data = icc;
-class beta0 beta1;
+class beta1 beta0;
 var icc;
 run;
+
+/*proc print data = cp_quad4; run;*/
+proc sort data = cp_quad4; by dsn beta0 beta1; run;
+
+/*data icc_quad4;
+set cp_quad4;
+by dsn beta0 beta1;
+retain sb2;
+if first.beta1 then sb2 = estimate;
+icc_quad4 = sb2 / (sb2 + estimate);
+if last.beta1 then output;
+run;
+proc means data = icc_quad4;
+class beta1 beta0;
+var icc_quad4;
+run;*/
 
 /*proc print data = icc; run;*/
 
@@ -169,13 +197,20 @@ data icc_bin_pi_sq;
 set cpbin (where = (covparm = "Intercept"));
 icc_pi_sq = (estimate) / (estimate + 3.29);
 run;
-
-/*proc print data = results_icc;*/
+/*data icc_bin_pi_sq_quad4;
+set cpbin_quad4 (where = (covparm = "Intercept"));
+icc_pi_sq_quad4 = (estimate) / (estimate + 3.29);
+run;*/
 
 proc means data = icc_bin_pi_sq;
-class beta0 beta1;
+class beta1 beta0;
 var icc_pi_sq;
 run;
+
+/*proc means data = icc_bin_pi_sq_quad4;
+class beta1 beta0;
+var icc_pi_sq_quad4;
+run;*/
 
 /* Want the histograms? */
 /*proc univariate data = results;
