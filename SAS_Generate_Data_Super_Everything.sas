@@ -68,10 +68,10 @@ ods select none;
 ods output parameterestimates = quadestimates&qpoints covparms = cpbin_quad&qpoints;
 title "quad &qpoints";
 proc glimmix data = sim method = quad(qpoints= &qpoints);
-by beta0 beta1 dsn;
-class obs;
-model y = x1 /solution dist=bin;
-random int / subject = cluster;
+	by beta0 beta1 dsn;
+	class obs;
+	model y = x1 /solution dist=bin;
+	random int / subject = cluster;
 run;
 ods select all;
 %mend quad;
@@ -128,11 +128,11 @@ ods select all;
 
 /* Key step ... Run the whole thing */
 %runsim(							
-	dsn = 8, p = 100, n = 100, 	/* n is number of clusters, p is people per cluster */
+	dsn = 1000, p = 100, n = 100, 	/* n is number of clusters, p is people per cluster */
 	beta0 = %str(-0.4054651081),
 /*  beta0 = %str(-4.59511985,-3.891820298,-3.47609869,-2.944438979,-2.197224577,-1.386294361,-0.8472978604,-0.4054651081),*/
-	beta1 = %str(-0.6931471806)
-/*	beta1 = %str(-0.6931471806,-0.2876820725,-0.1053605157,0.0953101798,0.2851789422,0.4054651081,0.6931471806,1.386294361)*/
+	beta1 = %str(-0.2876820725,-0.1053605157)
+/*	beta1 = %str(-0.6931471806,-0.2876820725,-0.1053605157,0.0953101798,0.2851789422,0.4054651081,0.6931471806)*/
 );
 
 
@@ -161,50 +161,50 @@ proc sort data = cp; by dsn beta0 beta1; run;
 
 /*proc print data = cp; run;*/
 
-data icc;
+data icc_pql_normal;
 set cp;
 by dsn beta0 beta1;
 retain sb2;
 if first.beta1 then sb2 = estimate;
-icc = sb2 / (sb2 + estimate);
+icc_pql_normal = sb2 / (sb2 + estimate);
 if last.beta1 then output;
 run;
 
-proc means data = icc;
+proc means data = icc_pql_normal;
 class beta1 beta0;
-var icc;
+var icc_pql_normal;
 run;
 
 /*proc print data = cp_quad4; run;*/
 proc sort data = cp_quad4; by dsn beta0 beta1; run;
 
-data icc_quad4;
+data icc_quad4_normal;
 set cp_quad4;
 by dsn beta0 beta1;
 retain sb2;
 if first.beta1 then sb2 = estimate;
-icc_quad4 = sb2 / (sb2 + estimate);
+icc_quad4_normal = sb2 / (sb2 + estimate);
 if last.beta1 then output;
 run;
-proc means data = icc_quad4;
+proc means data = icc_quad4_normal;
 class beta1 beta0;
-var icc_quad4;
+var icc_quad4_normal;
 run;
 
 /*proc print data = icc; run;*/
 
-data icc_bin_pi_sq;
+data icc_bin_pi_sq_pql;
 set cpbin (where = (covparm = "Intercept"));
-icc_pi_sq = (estimate) / (estimate + 3.29);
+icc_pi_sq_pql = (estimate) / (estimate + 3.29);
 run;
 data icc_bin_pi_sq_quad4;
 set cpbin_quad4 (where = (covparm = "Intercept"));
 icc_pi_sq_quad4 = (estimate) / (estimate + 3.29);
 run;
 
-proc means data = icc_bin_pi_sq;
+proc means data = icc_bin_pi_sq_pql;
 class beta1 beta0;
-var icc_pi_sq;
+var icc_pi_sq_pql;
 run;
 
 proc means data = icc_bin_pi_sq_quad4;
