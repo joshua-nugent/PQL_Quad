@@ -32,8 +32,8 @@ ods select none;
 ods output parameterestimates = pqlestimates covparms = cpbin;
 title "pql";
 proc glimmix
-	data = sim
-	pconv = .0001;
+	data = sim;
+/*	pconv = .00001;*/
 	/* Convergence is mabe too loose with this value? */
 	/*  pconv = .00001; /* Convergence is good with this value! */
 	/*	pconv = .000001; /*Convergence is poor with this value */
@@ -128,10 +128,10 @@ ods select all;
 
 /* Key step ... Run the whole thing */
 %runsim(							
-	dsn = 1000, p = 100, n = 100, 	/* n is number of clusters, p is people per cluster */
-	beta0 = %str(-0.4054651081),
+	dsn = 2000, p = 25, n = 100, sigbsq = 1,	/* n is number of clusters, p is people per cluster */
+	beta0 = %str(-4.59511985,-3.891820298,-3.47609869,-2.944438979,-2.197224577,-1.386294361,-0.8472978604,-0.4054651081),
 /*  beta0 = %str(-4.59511985,-3.891820298,-3.47609869,-2.944438979,-2.197224577,-1.386294361,-0.8472978604,-0.4054651081),*/
-	beta1 = %str(-0.2876820725,-0.1053605157)
+	beta1 = %str(-0.6931471806,-0.2876820725,-0.1053605157,0.0953101798)/*,0.2851789422,0.4054651081,0.6931471806)
 /*	beta1 = %str(-0.6931471806,-0.2876820725,-0.1053605157,0.0953101798,0.2851789422,0.4054651081,0.6931471806)*/
 );
 
